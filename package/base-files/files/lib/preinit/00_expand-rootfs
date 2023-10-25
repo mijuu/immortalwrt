@@ -1,0 +1,25 @@
+expand_rootfs () {
+	DEVICE="$(mount | grep -o '^.* on / type squashfs' | sed 's/p2 on \/ type squashfs//g')"
+	if [ ! -z $DEVICE ]; then
+		PARTITION="$DEVICE"p2
+        # If the partition is smaller than the initial value, expand it to the end of the disk.
+        PARTITION_SIZE="$(lsblk -no size "$PARTITION")"
+        if [ $PARTITION_SIZE = '380M' ]; then
+            # resize partition
+            parted -s "$DEVICE" resizepart 2 100%
+
+            # Create a loop device pointing to the FS
+            # See libfstools/rootdisk.c for source of partition offset logic.
+            #PARTED_FS_SIZE="$(unsquashfs -s "$PARTITION" | grep -o 'Filesystem size [0-9]* bytes' | grep -o '[0-9][0-9]*')"
+            #FS_OFFSET="$(expr '(' "$PARTED_FS_SIZE" + 65535 ')' / 65536 '*' 65536)"
+            #LOOP_DEVICE="$(losetup -f --show -o "$FS_OFFSET" "$PARTITION")"
+
+            # format partition
+            #mkfs.f2fs "$LOOP_DEVICE"
+            #sync
+            #losetup -d "$LOOP_DEVICE"
+        fi
+    fi
+}
+
+boot_hook_add preinit_essential expand_rootfs
